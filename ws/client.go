@@ -3,8 +3,8 @@ package ws
 import (
 	// "log"
 
-	// "github.com/gorilla/websocket"
-	"github.com/gofiber/contrib/websocket"
+	"github.com/gorilla/websocket"
+	
 
 )
 
@@ -13,6 +13,7 @@ type Client struct {
 	Send chan []byte
 	// UserId int
 }
+
 type SendResponse struct{
 	Type string  `json:"type"`
 	Data interface{}  `json:"data"`

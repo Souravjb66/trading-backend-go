@@ -73,7 +73,9 @@ func CreateTrade(trade db.Trades)(interface{},error){
 			return nil,err
 
 		}
-		con.Send<-btData
+		go func(){
+			con.Send<-btData
+		}()
 		
 			
 
@@ -149,7 +151,11 @@ func UpdateUserPortFolio(userId uint64,asset string,balance int64)error{
 			return err
 
 		}
-		con.Send<-btData
+		go func(){
+			con.Send<-btData
+
+		}()
+		
 		
 			
 
@@ -177,6 +183,7 @@ func UpdateUserPortFolio(userId uint64,asset string,balance int64)error{
 }
 
 func CreateUserPortfolio(userId uint64,asset string,balance int64)error{
+	log.Println("enter in create portfolio",balance)
 	dB:=config.OpenMysqlConnectionQuery()
 	defer dB.Close()
 	params:=db.InsertPortfolioParams{
@@ -186,7 +193,8 @@ func CreateUserPortfolio(userId uint64,asset string,balance int64)error{
 	}
 	data,err:=dB.InsertPortfolio(context.Background(),params)
 	if err!=nil{
-		return err
+		log.Println("erro in portfolio ",err)
+		// return err
 	}
 	for _,con:=range ws.WebsocketConnections{
 		res:=map[string]interface{}{
@@ -200,16 +208,20 @@ func CreateUserPortfolio(userId uint64,asset string,balance int64)error{
 		}
 		btData,err:=json.Marshal(res)
 		if err!=nil{
-			return err
+			log.Println("error in creating portfolio :",err)
+			// return err
 
 		}
-		con.Send<-btData
+
+		go func(){
+		    con.Send<-btData
+		}()
 		
 			
 
 
 	}
-		
+	log.Println("last in portfolio")	
 	return nil
 
 }
@@ -248,10 +260,14 @@ func CreateOrder(userId uint64,asset string,orderType string,price int64,quantit
 		}
 		btData,err:=json.Marshal(res)
 		if err!=nil{
-			return err
+			log.Println("error in creating order ",err)
+			// return err
 
 		}
-		con.Send<-btData
+		
+		go func(){
+			con.Send<-btData
+		}()
 		
 			
 
@@ -314,7 +330,9 @@ func UpdateOrderStatus(id uint64,remainingQuantity int64,status string)error{
 			return err
 
 		}
-		con.Send<-btData
+		go func(){
+			con.Send<-btData
+		}()
 		
 			
 
@@ -332,7 +350,7 @@ func TradeLogic(
 	sell *sqlcdb.Orders,
 	tradeQty int,
 	tradePrice int,
-) {
+)error{
 
 	db := config.OpenMysqlConnectionQuery()
 	defer db.Close()
@@ -347,18 +365,18 @@ func TradeLogic(
 
 	qtx := db.WithTx(tx)
 
-	defer func() {
-		if err != nil {
-			err=tx.Rollback()
-			if err!=nil{
-				return
-			}
-		}
-	}()
+	// defer func() {
+	// 	if err != nil {
+	// 		err=tx.Rollback()
+	// 		if err!=nil{
+	// 			return
+	// 		}
+	// 	}
+	// }()
 
 	total := int64(tradeQty * tradePrice)
 
-	// 1️⃣ update buyer order
+	// update buyer order
 	// err = qtx.UpdateOrderStatus(ctx,
 	// 	sqlcdb.UpdateOrderFilledParams{
 	// 		ID:                int64(buy.ID),
@@ -379,10 +397,14 @@ func TradeLogic(
 	})
 	if err != nil {
 		log.Println(err)
+		err=tx.Rollback()
+			if err!=nil{
+				return err
+			}
 		// return
 	}
 
-	// 2️⃣ update seller order
+	// pdate seller order
 	// err = qtx.UpdateOrderFilled(ctx,
 	// 	sqlcdb.UpdateOrderFilledParams{
 	// 		ID:                int64(sell.ID),
@@ -398,10 +420,13 @@ func TradeLogic(
 	})
 	if err != nil {
 		log.Println(err)
-		// return
+		err=tx.Rollback()
+			if err!=nil{
+				return err
+			}
 	}
 
-	// 3️⃣ buyer portfolio (+)
+	//  buyer portfolio (+)
 	// err = qtx.AddPortfolio(ctx,
 	// 	sqlcdb.AddPortfolioParams{
 	// 		UserID:   buy.UserID,
@@ -415,10 +440,13 @@ func TradeLogic(
 	})
 	if err != nil {
 		log.Println(err)
-		// return
+		err=tx.Rollback()
+			if err!=nil{
+				return err
+			}
 	}
 
-	// 4️⃣ seller portfolio (-)
+	// seller portfolio (-)
 	// err = qtx.SubPortfolio(ctx,
 	// 	sqlcdb.SubPortfolioParams{
 	// 		UserID:   sell.UserID,
@@ -433,10 +461,13 @@ func TradeLogic(
 	})
 	if err != nil {
 		log.Println(err)
-		// return
+		err=tx.Rollback()
+			if err!=nil{
+				return err
+			}
 	}
 
-	// 5️⃣ buyer balance (-)
+	// buyer balance (-)
 	// err = qtx.SubUserBalance(ctx,
 	// 	sqlcdb.SubUserBalanceParams{
 	// 		UserID: buy.UserID,
@@ -450,10 +481,13 @@ func TradeLogic(
 	})
 	if err != nil {
 		log.Println(err)
-		// return
+		err=tx.Rollback()
+			if err!=nil{
+				return err
+			}
 	}
 
-	// 6️⃣ seller balance (+)
+	//  seller balance (+)
 	// err = qtx.AddUserBalance(ctx,
 	// 	sqlcdb.AddUserBalanceParams{
 	// 		UserID: sell.UserID,
@@ -465,14 +499,21 @@ func TradeLogic(
 	})
 	if err != nil {
 		log.Println(err)
-		// return
+		err=tx.Rollback()
+			if err!=nil{
+				return err
+			}
 	}
 
 	err=tx.Commit()
 	if err!=nil{
 		log.Println(err)
-		// return
+		err=tx.Rollback()
+			if err!=nil{
+				return err
+			}
 	}
 	log.Printf("TRADE EXECUTED: BUY %d SELL %d QTY %d PRICE %d\n",
 		buy.ID, sell.ID, tradeQty, tradePrice)
+	return nil
 }

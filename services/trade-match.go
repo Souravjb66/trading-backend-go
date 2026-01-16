@@ -129,6 +129,14 @@ func Match(order *db.Orders) {
 			heap.Pop(sellHeap)
 				//
 		}
+
+		if tb==0 || ts==0{
+			pr:=int(bestSell.Price)
+			err:=TradeLogic(bestBuy,bestSell,int(ts),pr)
+			if err!=nil{
+				break
+			}
+		}
 		
 	}
 

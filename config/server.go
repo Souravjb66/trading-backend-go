@@ -4,8 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"trading/connect"
-    "github.com/gofiber/fiber/v2"
+    // "github.com/gofiber/fiber/v2"
+	"github.com/go-chi/chi/v5"
 	sqlcdb "trading/db"
+	// "github.com/gorilla/mux"
+    // "github.com/gorilla/websocket"
+
+
 	
     
 	// "firebase.google.com/go/v4/messaging"
@@ -23,9 +28,9 @@ type Server struct {
 	// RedisClient *redisConnector.Redis
 	// Route   *http.ServeMux
 	// WorkerPool  chan bool
-	Route     *fiber.App
+	Route     *chi.Mux
 	Redis      *connect.RedisStruct
-	WebSocketRoute *fiber.App
+	WebSocketRoute *chi.Mux
 	
 }
 
@@ -52,7 +57,7 @@ func StartServer(serverPort string) {
 	// 	Addr: fmt.Sprintf(":%s", serverPort),
 	// 	Handler: TradeServer.Route,
 	// }
-	if err:=TradeServer.Route.Listen(fmt.Sprintf(`:%s`,serverPort));err!=nil{
+	if err:=http.ListenAndServe(":8081", TradeServer.Route);err!=nil{
 		fmt.Printf("failed to start the rest api server : ERROR : %s \n", err)
 		panic(err)
 

@@ -54,7 +54,7 @@ func main() {
 	server.CreateServer( mysqlConnect.PostgreSQLRequired{Url: mysqlHost, UserName: mysqlDbUsername, Password: mysqlDbPassword, Port: mysqlPort, DbName: mysqlDbName})
     
 	routes.Routes()
-	routes.WebSocketRoute()
+	// routes.WebSocketRoute()
 	log.Println("after websocket")
     services.HeapInit()
 	

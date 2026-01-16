@@ -6,39 +6,55 @@ import (
 	// "net/http"
 
 	// "github.com/gorilla/mux"
-	// "github.com/gorilla/websocket"
+	"net/http"
+	"github.com/gorilla/websocket"
 	"sync"
+	"github.com/go-chi/chi/v5"
 	// "trading/config"
 
-	"github.com/gofiber/contrib/websocket"
-	"github.com/gofiber/fiber/v2"
+	// "github.com/gofiber/contrib/websocket"
+	// "github.com/gofiber/fiber/v2"
 	"strconv"
 )
 
 // upgrader upgrades HTTP to WebSocket
-// var upgrader = websocket.Upgrader{
-// 	CheckOrigin: func(r *http.Request) bool { return true },
-// }
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
 var PubSubSystem = NewPubSub()
 // HandleConnection upgrades HTTP → WS and registers the client
-// func HandleConnection(w http.ResponseWriter, r *http.Request) {
-// 	conn, err := upgrader.Upgrade(w, r, nil)
-// 	if err != nil {
-// 		log.Println("Upgrade error:", err)
-// 		return
-// 	}
+func HandleConnection(w http.ResponseWriter, r *http.Request) {
+	log.Println("in the ws con")
+	q:=r.URL.Query()
+	id:=q.Get("id")
+	userId,err:=strconv.Atoi(id)
+	if err!=nil{
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("userId not valid"))
+	}
 
-// 	client := NewClient(conn)
-// 	RegisterClient(client)
-// 	sub := PubSubSystem.Subscribe("portfolio_updates")
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("Upgrade error:", err)
+		return
+	}
 
-// 	for msg := range sub {
-// 		conn.WriteJSON(msg)
-// 	}
+    
+	client := Client{
+			Conn: conn,
+			Send: make(chan []byte),
 
-// 	go client.ReadMessages()
-// 	go client.WriteMessages()
-// }
+		}
+	RegisterClient(&client,userId)
+	// sub := PubSubSystem.Subscribe("portfolio_updates")
+
+	// for msg := range sub {
+	// 	conn.WriteJSON(msg)
+	// }
+
+	go ReadClientMessage(conn, userId)
+	go WriteClientMessage(conn, userId)
+}
 func RegisterClient(client *Client,id int) {
 	var mu sync.Mutex
 
@@ -80,7 +96,7 @@ func UnregisterClient(client *Client,id int) {
 	
 }
 
-func ReadClientMessage(c *websocket.Conn){
+func ReadClientMessage(c *websocket.Conn,userId int){
 	// app:=config.TradeServer.WebSocketRoute
 	var(
 			dataType int
@@ -89,9 +105,20 @@ func ReadClientMessage(c *websocket.Conn){
 			
 
 		)
+	_,ok:=isConnectionAlliveMap[userId]
+	if !ok{
+		log.Println("error in map")
+		return 
+
+	}
+	
 	for{
+
+		log.Println("in read msg")
 		if dataType,msg,err=c.ReadMessage();err!=nil{
 			log.Println("error in read ",err)
+			cl:=WebsocketConnections[userId]
+            UnregisterClient(cl,userId)
 			break
 		}
 		log.Println(dataType)
@@ -101,60 +128,47 @@ func ReadClientMessage(c *websocket.Conn){
 		
 
 }
-func WriteClientMessage(c *websocket.Conn){
+func WriteClientMessage(c *websocket.Conn , userId int){
 	// app:=config.TradeServer.WebSocketRoute
-	var(
-			dataType int
-			msg []byte
-			
-
-		)
-		for{
-			if err:=c.WriteMessage(dataType, msg);err!=nil{
-			    log.Println("errro in sending msg ",err)
-				break
-			
-		    }
-
-		}
-
-
-
-	
-
-}
-func UpgradeToWs(ctx *fiber.Ctx)error{
-	// app:=config.TradeServer.WebSocketRoute
-	websocket.New(func(c *websocket.Conn){
-		log.Println(c.Locals("allowed"))  // true
-		log.Println(c.Params("id"))       // 123
-		log.Println(c.Query("v"))         // 1.0
-		log.Println(c.Cookies("session")) // ""
-		userId,err:=strconv.Atoi(c.Params("id"))   //need to convert it to int
-		if err!=nil{
-			log.Println(" error in parsing userid :",err)
+	    // var ok bool
+        // var msg []byte
+		client,ok:=WebsocketConnections[int(userId)]
+		if !ok{
+			log.Println("value not present in the map")
 			return
 		}
-		RegisterClient(&Client{
-			Conn: c,
-			Send: make(chan []byte),
+		//ignore the warning
+		for{
+			
+			select{
+			case msg,ok:= <-client.Send:
+				if !ok{
+					log.Println("channel is closed")
+					// break
+					return
+				}
+				if err:=c.WriteMessage(websocket.TextMessage, msg);err!=nil{
+					log.Println("error in send msg :",err)
+					// continue
+				}
+				
 
-		},userId)
-		go WriteClientMessage(c)
-		go ReadClientMessage(c)
-		
-		
-	})
 
-	return nil
+
+			}
+		
+
+		}
+		
 
 }
+
 // StartWebSocketServer runs a separate Mux router on a different port
-func StartWebSocketServer(f *fiber.App) {
+func StartWebSocketServer(f *chi.Mux) {
     
-	port := ":8080" // WebSocket service port
+	port := ":8082" // WebSocket service port
 	log.Println("WebSocket server running on", port)
-	if err := f.Listen(port); err != nil {
+	if err :=http.ListenAndServe(":8080", f); err != nil {
 		log.Fatal("WebSocket server failed:", err)
 	}
 }

@@ -1,5 +1,11 @@
 package ws
 
+import(
+	"net/http"
+	"encoding/json"
+	"log"
+)
+
 type DataForCreateOrder struct{
 	Type string `json:"type"`
 	Order_Id int `json:"order_id"`
@@ -51,3 +57,11 @@ const(
 	USER_PROFILE="PROFILE"
 
 )
+
+func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(code)
+    if err := json.NewEncoder(w).Encode(payload); err != nil {
+        log.Printf("Failed to encode JSON: %v", err)
+    }
+}
