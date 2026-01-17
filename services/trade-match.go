@@ -101,7 +101,7 @@ func Match() {
 		bestSell := (*sellHeap)[0]
         
 		// Trade condition
-		if bestBuy.Price < bestSell.Price {
+		if bestBuy.Price < bestSell.Price || bestBuy.UserID==bestSell.UserID{
 			break
 
 		}

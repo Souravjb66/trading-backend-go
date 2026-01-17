@@ -359,6 +359,7 @@ func TradeLogic(
 	sellerRemainingQuantity int64,
 )error{
     log.Printf("TRADE STARTED BUY %d SELL %d QTY %d PRICE %d BUYER ORDER STATUS %v SELLER ORDER STATUS %v BUYER REMAINING QUANTITY %d SELLER REMAINING QUANTITY %d\n",buy.ID, sell.ID, tradeQty, tradePrice,isBuyOrderClose,isSellOrderCLose,buyerRemainingQuantity,sellerRemainingQuantity)
+	log.Printf("buyer userid: %d seller user id: %d \n",buy.UserID,sell.UserID)
 	db := config.OpenMysqlConnectionQuery()
 	defer db.Close()
 
@@ -393,7 +394,7 @@ func TradeLogic(
 
 	})
 	if err != nil {
-		log.Println(err)
+		log.Println("in buyer update order status tx",err)
 		err=tx.Rollback()
 			if err!=nil{
 				return err
@@ -410,7 +411,7 @@ func TradeLogic(
 
 	})
 	if err != nil {
-		log.Println(err)
+		log.Println("in seller update order status tx",err)
 		err=tx.Rollback()
 			if err!=nil{
 				return err
@@ -420,7 +421,7 @@ func TradeLogic(
 	//  buyer portfolio (+)
     buyerPort,err:=qtx.GetPortfolioByUserID(ctx, buy.UserID)
 	if err!=nil{
-		log.Println(err)
+		log.Println("in buyer get portfolio  tx",err)
 		err=tx.Rollback()
 			if err!=nil{
 				return err
@@ -436,7 +437,7 @@ func TradeLogic(
 		Quantity: buyerPort.Quantity+int64(tradeQty),
 	})
 	if err != nil {
-		log.Println(err)
+		log.Println("in update buyer portfolio tx",err)
 		err=tx.Rollback()
 			if err!=nil{
 				return err
@@ -446,7 +447,7 @@ func TradeLogic(
 	// seller portfolio (-)
 	sellerPort,err:=qtx.GetPortfolioByUserID(ctx, sell.UserID)
 	if err!=nil{
-		log.Println(err)
+		log.Println("in seller get portfolio tx",err)
 		err=tx.Rollback()
 			if err!=nil{
 				return err
@@ -463,7 +464,7 @@ func TradeLogic(
 
 	})
 	if err != nil {
-		log.Println(err)
+		log.Println("in update seller portfolio tx",err)
 		err=tx.Rollback()
 			if err!=nil{
 				return err
@@ -473,7 +474,7 @@ func TradeLogic(
 	// buyer balance (-)
     buyerUser,err:=qtx.GetUserByID(ctx,buy.UserID)
     if err != nil {
-		log.Println(err)
+		log.Println("in get buyer user id tx",err)
 		err=tx.Rollback()
 			if err!=nil{
 				return err
@@ -487,7 +488,7 @@ func TradeLogic(
 
 	})
 	if err != nil {
-		log.Println(err)
+		log.Println("in buyer updat userbalance tx",err)
 		err=tx.Rollback()
 			if err!=nil{
 				return err
@@ -495,9 +496,9 @@ func TradeLogic(
 	}
 
 	//  seller balance (+)
-	sellerUser,err:=qtx.GetUserByID(ctx,buy.UserID)
+	sellerUser,err:=qtx.GetUserByID(ctx,sell.UserID)
     if err != nil {
-		log.Println(err)
+		log.Println("in get seller user id tx",err)
 		err=tx.Rollback()
 			if err!=nil{
 				return err
@@ -508,7 +509,7 @@ func TradeLogic(
 		Balance: sellerUser.Balance+total,
 	})
 	if err != nil {
-		log.Println(err)
+		log.Println("in update seller balance tx",err)
 		err=tx.Rollback()
 			if err!=nil{
 				return err
@@ -527,7 +528,7 @@ func TradeLogic(
 
 	})
 	if err != nil {
-		log.Println(err)
+		log.Println("in creating trade tx",err)
 		err=tx.Rollback()
 			if err!=nil{
 				return err
@@ -535,13 +536,13 @@ func TradeLogic(
 	}
 	err=tx.Commit()
 	if err!=nil{
-		log.Println(err)
+		log.Println("in commit error tx",err)
 		err=tx.Rollback()
 			if err!=nil{
 				return err
 			}
 	}
-	log.Printf("TRADE EXECUTED: BUY %d SELL %d QTY %d PRICE %d\n",
+	log.Printf("TRADE EXECUTED: BUYER ID  %d SELLER ID %d QTY %d PRICE %d\n",
 		buy.ID, sell.ID, tradeQty, tradePrice)
 
 	// go func(){
