@@ -71,13 +71,13 @@ LIMIT 1;
 
 -- name: GetOpenBuyOrders :many
 SELECT * FROM orders
-WHERE type = 'buy' 
+WHERE type = 'BUY' 
   AND remaining_quantity > 0
 ORDER BY price DESC, created_at ASC;
 
 -- name: GetOpenSellOrders :many
 SELECT * FROM orders
-WHERE type = 'sell' 
+WHERE type = 'SELL' 
   AND remaining_quantity > 0
 ORDER BY price ASC, created_at ASC;
 

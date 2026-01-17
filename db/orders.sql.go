@@ -186,7 +186,7 @@ func (q *Queries) GetMaxBuyPriceOfaAsset(ctx context.Context, asset string) (Get
 
 const getOpenBuyOrders = `-- name: GetOpenBuyOrders :many
 SELECT id, user_id, asset, type, price, quantity, remaining_quantity, status, created_at FROM orders
-WHERE type = 'buy' 
+WHERE type = 'BUY' 
   AND remaining_quantity > 0
 ORDER BY price DESC, created_at ASC
 `
@@ -267,7 +267,7 @@ func (q *Queries) GetOpenOrdersByAsset(ctx context.Context, asset string) ([]Ord
 
 const getOpenSellOrders = `-- name: GetOpenSellOrders :many
 SELECT id, user_id, asset, type, price, quantity, remaining_quantity, status, created_at FROM orders
-WHERE type = 'sell' 
+WHERE type = 'SELL' 
   AND remaining_quantity > 0
 ORDER BY price ASC, created_at ASC
 `

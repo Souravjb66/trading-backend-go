@@ -28,8 +28,8 @@ func (b *BuyerHeap) Len() int {
 
 type SellerHeap []*db.Orders
 
-func (b BuyerHeap) Length() int {
-	return len(b)
+func (b *BuyerHeap) Length() int {
+	return len(*b)
 
 }
 
@@ -38,8 +38,8 @@ func (h BuyerHeap) Less(i, j int) bool {
 
 	return h[i].Price > h[j].Price
 }
-func (h BuyerHeap) Swap(i, j int) {
-	h[i], h[j] = h[j], h[i]
+func (h *BuyerHeap) Swap(i, j int) {
+	(*h)[i], (*h)[j] = (*h)[j], (*h)[i]
 }
 func (h *BuyerHeap) Push(x interface{}) {
 	*h = append(*h, x.(*db.Orders))
@@ -55,16 +55,16 @@ func (h *BuyerHeap) Pop() interface{} {
 
 //
 
-func (h SellerHeap) Len() int { return len(h) }
+func (h *SellerHeap) Len() int { return len(*h) }
 
 // MIN heap → lower price has higher priority
-func (h SellerHeap) Less(i, j int) bool {
+func (h *SellerHeap) Less(i, j int) bool {
 
-	return h[i].Price < h[j].Price
+	return (*h)[i].Price < (*h)[j].Price
 }
 
-func (h SellerHeap) Swap(i, j int) {
-	h[i], h[j] = h[j], h[i]
+func (h *SellerHeap) Swap(i, j int) {
+	(*h)[i], (*h)[j] = (*h)[j], (*h)[i]
 }
 
 func (h *SellerHeap) Push(x interface{}) {
@@ -83,60 +83,63 @@ func (h *SellerHeap) Pop() interface{} {
 // sellHeap := &SellHeap{}
 // var buyHeap *BuyerHeap
 // var sellHeap *SellerHeap
-var buyHeap *BuyerHeap
-var sellHeap *SellerHeap
+var buyHeap =&BuyerHeap{}
+var sellHeap =&SellerHeap{}
 
 func HeapInit() {
-	buyHeap = &BuyerHeap{}
-	sellHeap = &SellerHeap{}
+	
 	heap.Init(buyHeap)
 	heap.Init(sellHeap)
 
 }
 
-func Match(order *db.Orders) {
+func Match() {
 	
 	// value:=config.BookMap[order.Asset]
 	for buyHeap.Len() > 0 && sellHeap.Len() > 0 {
 		bestBuy := (*buyHeap)[0]
 		bestSell := (*sellHeap)[0]
-
+        
 		// Trade condition
 		if bestBuy.Price < bestSell.Price {
 			break
 
 		}
+		isSellOrderClose:=false
+		isBuyOrderClose:=false
 		// Execute trade
-		tradeQty := min(bestBuy.Quantity, bestSell.Quantity)
+		tradeQty := min(bestBuy.RemainingQuantity, bestSell.RemainingQuantity) //give the smallet value among them
 
-		tb:= bestBuy.Quantity
+		tb:= bestBuy.RemainingQuantity
 		
 
-		ts:= bestSell.Quantity
+		ts:= bestSell.RemainingQuantity
 	
 		tradeQt:=tradeQty
 		
-		tb -= tradeQt
-		ts -= tradeQt
+		tb -= tradeQt   //buy order
+		ts -= tradeQt    //sellorder
 
 			// Remove filled orders
 		if tb == 0 {
+            isBuyOrderClose=true
 			heap.Pop(buyHeap)
 				
 				//
 		}
 		if ts == 0 {
+			isSellOrderClose=true
 			heap.Pop(sellHeap)
 				//
 		}
 
-		if tb==0 || ts==0{
-			pr:=int(bestSell.Price)
-			err:=TradeLogic(bestBuy,bestSell,int(ts),pr)
-			if err!=nil{
-				break
-			}
+		
+		pr:=int(bestSell.Price)
+		err:=TradeLogic(bestBuy,bestSell,int(tradeQty),pr,isBuyOrderClose,isSellOrderClose,tb,ts)
+		if err!=nil{
+			break
 		}
+		
 		
 	}
 
@@ -156,10 +159,10 @@ func AddDbBuySellDataToHeap() {
 		return
 	}
 	for _, value := range data {
-		heap.Push(buyHeap, value)
+		heap.Push(buyHeap, &value)
 	}
 	for _, value := range sell_data {
-		heap.Push(sellHeap, value)
+		heap.Push(sellHeap, &value)
 	}
 
 }

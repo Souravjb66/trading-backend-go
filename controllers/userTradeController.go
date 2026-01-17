@@ -14,15 +14,17 @@ import (
 
 func SignUpUserController(w http.ResponseWriter,r *http.Request){
 	// bd:=ctx.Body()
-	var user db.Users
-    json.NewDecoder(r.Body).Decode(&user)
-	// err:=json.Unmarshal(bd, &user)
-	// if err!=nil{
-	// 	return err
-	// }
-
-	err:=services.SignUp(user.Username, user.Email, user.PasswordHash)
 	w.Header().Set("Content-Type", "application/json")
+	var user db.Users
+    err:=json.NewDecoder(r.Body).Decode(&user)
+	// err:=json.Unmarshal(bd, &user)
+	if err!=nil{
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("error in parsing data"))
+	}
+
+	err=services.SignUp(user.Username, user.Email, user.PasswordHash,user.Balance)
+	
 
     // 2. Set the status code
     

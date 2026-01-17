@@ -4,17 +4,19 @@ import (
 
 	// "github.com/gofiber/fiber/v2"
 	"context"
+	// "database/sql"
 	"log"
+	// "time"
 	"trading/config"
 	"trading/db"
+
 	// "sync"
 	// "strconv"
+	"encoding/json"
 	sqlcdb "trading/db"
 	"trading/ws"
-	"encoding/json"
 	// "encoding/json"
 	// "container/heap"
-	
 )
 
 func GetUserById(id uint64)(db.Users,error){
@@ -277,7 +279,8 @@ func CreateOrder(userId uint64,asset string,orderType string,price int64,quantit
 	if err!=nil{
 		log.Println(err)
 	}
-	Match(&data)
+	AddDbBuySellDataToHeap()
+	Match()
 	// log.Println(dt)
 	// else{
 	// 	data, _ := json.Marshal(dt)
@@ -348,10 +351,14 @@ func UpdateOrderStatus(id uint64,remainingQuantity int64,status string)error{
 func TradeLogic(
 	buy *sqlcdb.Orders,
 	sell *sqlcdb.Orders,
-	tradeQty int,
-	tradePrice int,
+	tradeQty int,  //trade quantity
+	tradePrice int,  //sell price
+	isBuyOrderClose bool,
+	isSellOrderCLose bool,
+	buyerRemainingQuantity int64,
+	sellerRemainingQuantity int64,
 )error{
-
+    log.Printf("TRADE STARTED BUY %d SELL %d QTY %d PRICE %d BUYER ORDER STATUS %v SELLER ORDER STATUS %v BUYER REMAINING QUANTITY %d SELLER REMAINING QUANTITY %d\n",buy.ID, sell.ID, tradeQty, tradePrice,isBuyOrderClose,isSellOrderCLose,buyerRemainingQuantity,sellerRemainingQuantity)
 	db := config.OpenMysqlConnectionQuery()
 	defer db.Close()
 
@@ -365,33 +372,23 @@ func TradeLogic(
 
 	qtx := db.WithTx(tx)
 
-	// defer func() {
-	// 	if err != nil {
-	// 		err=tx.Rollback()
-	// 		if err!=nil{
-	// 			return
-	// 		}
-	// 	}
-	// }()
+	
 
 	total := int64(tradeQty * tradePrice)
 
-	// update buyer order
-	// err = qtx.UpdateOrderStatus(ctx,
-	// 	sqlcdb.UpdateOrderFilledParams{
-	// 		ID:                int64(buy.ID),
-	// 		FilledQuantity:    tradeQty,
-	// 		RemainingQuantity: buy.Qty - tradeQty,
-	// 		Status:            getStatus(buy.Qty-tradeQty),
-	// 	})
 	var buystatus string="OPEN"
-	if buy.Quantity- int64(tradeQty) <=0{
-		buystatus="CLOSE"
+	if isBuyOrderClose{
+		buystatus="FILLED"
 
 	}
+	var sellstatus = "OPEN"
+	if isSellOrderCLose{
+		sellstatus="FILLED"
+	}
+	//buy
 	_,err=qtx.UpdateOrderStatus(ctx, sqlcdb.UpdateOrderStatusParams{
 		ID: int64(buy.ID),
-		RemainingQuantity: buy.Quantity- int64(tradeQty),
+		RemainingQuantity: buyerRemainingQuantity,
 		Status: sqlcdb.OrderStatus(buystatus),
 
 	})
@@ -404,18 +401,12 @@ func TradeLogic(
 		// return
 	}
 
-	// pdate seller order
-	// err = qtx.UpdateOrderFilled(ctx,
-	// 	sqlcdb.UpdateOrderFilledParams{
-	// 		ID:                int64(sell.ID),
-	// 		FilledQuantity:    tradeQty,
-	// 		RemainingQuantity: sell.Qty - tradeQty,
-	// 		Status:            getStatus(sell.Qty-tradeQty),
-	// 	})
+	
+	//seller
 	_,err=qtx.UpdateOrderStatus(ctx, sqlcdb.UpdateOrderStatusParams{
-		ID: int64(buy.ID),
-		RemainingQuantity: sell.Quantity- int64(tradeQty),
-		Status: sqlcdb.OrderStatus(buystatus),
+		ID: int64(sell.ID),
+		RemainingQuantity: sellerRemainingQuantity,
+		Status: sqlcdb.OrderStatus(sellstatus),
 
 	})
 	if err != nil {
@@ -427,16 +418,22 @@ func TradeLogic(
 	}
 
 	//  buyer portfolio (+)
-	// err = qtx.AddPortfolio(ctx,
-	// 	sqlcdb.AddPortfolioParams{
-	// 		UserID:   buy.UserID,
-	// 		Asset:    buy.Asset,
-	// 		Quantity: tradeQty,
-	// 	})
+    buyerPort,err:=qtx.GetPortfolioByUserID(ctx, buy.UserID)
+	if err!=nil{
+		log.Println(err)
+		err=tx.Rollback()
+			if err!=nil{
+				return err
+			}
+
+
+	}
+	
+	//buyer
 	_,err=qtx.UpdatePortfolioCreditQuantity(ctx, sqlcdb.UpdatePortfolioCreditQuantityParams{
 		UserID: buy.UserID,
 		Asset: buy.Asset,
-		Quantity: int64(tradeQty),
+		Quantity: buyerPort.Quantity+int64(tradeQty),
 	})
 	if err != nil {
 		log.Println(err)
@@ -447,14 +444,20 @@ func TradeLogic(
 	}
 
 	// seller portfolio (-)
-	// err = qtx.SubPortfolio(ctx,
-	// 	sqlcdb.SubPortfolioParams{
-	// 		UserID:   sell.UserID,
-	// 		Asset:    sell.Asset,
-	// 		Quantity: tradeQty,
-	// 	})
+	sellerPort,err:=qtx.GetPortfolioByUserID(ctx, sell.UserID)
+	if err!=nil{
+		log.Println(err)
+		err=tx.Rollback()
+			if err!=nil{
+				return err
+			}
+
+
+	}
+
+	//seller
 	_,err=qtx.UpdatePortfolioDebitQuantity(ctx, sqlcdb.UpdatePortfolioDebitQuantityParams{
-		Quantity: int64(tradeQty),
+		Quantity: sellerPort.Quantity-int64(tradeQty),
 		Asset: sell.Asset,
 	    UserID: sell.UserID,
 
@@ -468,14 +471,18 @@ func TradeLogic(
 	}
 
 	// buyer balance (-)
-	// err = qtx.SubUserBalance(ctx,
-	// 	sqlcdb.SubUserBalanceParams{
-	// 		UserID: buy.UserID,
-	// 		Amount: total,
-	// 	})
+    buyerUser,err:=qtx.GetUserByID(ctx,buy.UserID)
+    if err != nil {
+		log.Println(err)
+		err=tx.Rollback()
+			if err!=nil{
+				return err
+			}
+	}
+	//buyer
 	_,err=qtx.DebitUserBalance(ctx, sqlcdb.DebitUserBalanceParams{
 		ID: buy.UserID,
-		Balance: total,
+		Balance: buyerUser.Balance-total,
 
 
 	})
@@ -488,14 +495,17 @@ func TradeLogic(
 	}
 
 	//  seller balance (+)
-	// err = qtx.AddUserBalance(ctx,
-	// 	sqlcdb.AddUserBalanceParams{
-	// 		UserID: sell.UserID,
-	// 		Amount: total,
-	// 	})
+	sellerUser,err:=qtx.GetUserByID(ctx,buy.UserID)
+    if err != nil {
+		log.Println(err)
+		err=tx.Rollback()
+			if err!=nil{
+				return err
+			}
+	}
 	_,err=qtx.UpdateUserBalanceDelta(ctx, sqlcdb.UpdateUserBalanceDeltaParams{
 		ID: sell.UserID,
-		Balance: total,
+		Balance: sellerUser.Balance+total,
 	})
 	if err != nil {
 		log.Println(err)
@@ -505,6 +515,24 @@ func TradeLogic(
 			}
 	}
 
+	
+
+	_,err=qtx.InsertTrade(ctx, sqlcdb.InsertTradeParams{
+		BuyOrderID: buy.ID,
+		SellOrderID: sell.ID,
+	    Asset: buy.Asset,
+		Price: total,
+		Quantity: int64(tradeQty),
+	
+
+	})
+	if err != nil {
+		log.Println(err)
+		err=tx.Rollback()
+			if err!=nil{
+				return err
+			}
+	}
 	err=tx.Commit()
 	if err!=nil{
 		log.Println(err)
@@ -515,5 +543,9 @@ func TradeLogic(
 	}
 	log.Printf("TRADE EXECUTED: BUY %d SELL %d QTY %d PRICE %d\n",
 		buy.ID, sell.ID, tradeQty, tradePrice)
+
+	// go func(){
+
+	// }()
 	return nil
 }

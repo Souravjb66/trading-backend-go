@@ -1,4 +1,4 @@
--- name: GetPortfolioByUserID :many
+-- name: GetPortfolioByUserID :one
 SELECT *
 FROM portfolio
 WHERE user_id = $1;
@@ -18,7 +18,7 @@ RETURNING *;
 
 -- name: UpdatePortfolioDebitQuantity :one
 UPDATE portfolio
-SET quantity = quantity-$1,
+SET quantity = $1,
     updated_at = CURRENT_TIMESTAMP
 WHERE user_id = $2
   AND asset = $3
@@ -26,7 +26,7 @@ RETURNING *;
 
 -- name: UpdatePortfolioCreditQuantity :one
 UPDATE portfolio
-SET quantity = quantity+$1,
+SET quantity = $1,
     updated_at = CURRENT_TIMESTAMP
 WHERE user_id = $2
   AND asset = $3

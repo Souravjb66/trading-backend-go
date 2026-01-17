@@ -7,13 +7,14 @@ import(
 	
     // "github.com/gofiber/fiber/v2"
 )
-func SignUp(username string,email string,password string)error{
+func SignUp(username string,email string,password string,balance int64)error{
     dB:=config.OpenMysqlConnectionQuery()
 	defer dB.Close()
     params:=db.CreateUserParams{
         Username   :username,
         Email      :email,
         PasswordHash :password,
+        Balance: balance,
     }
     if _,err:=dB.CreateUser(context.Background(),params);err!=nil{
         return err

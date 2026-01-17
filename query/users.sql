@@ -35,13 +35,13 @@ WHERE deleted_at IS NULL;
 
 -- name: UpdateUserBalanceDelta :one
 UPDATE users
-SET balance = balance + $1
+SET balance = $1
 WHERE id = $2
 RETURNING *;
 
 -- name: DebitUserBalance :one
 UPDATE users
-SET balance = balance - $1
+SET balance = $1
 WHERE id = $2
   AND balance >= $1
 RETURNING *;

@@ -9,39 +9,23 @@ import (
 	"context"
 )
 
-const getPortfolioByUserID = `-- name: GetPortfolioByUserID :many
+const getPortfolioByUserID = `-- name: GetPortfolioByUserID :one
 SELECT id, user_id, asset, quantity, updated_at
 FROM portfolio
 WHERE user_id = $1
 `
 
-func (q *Queries) GetPortfolioByUserID(ctx context.Context, userID int64) ([]Portfolio, error) {
-	rows, err := q.query(ctx, q.getPortfolioByUserIDStmt, getPortfolioByUserID, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Portfolio{}
-	for rows.Next() {
-		var i Portfolio
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.Asset,
-			&i.Quantity,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) GetPortfolioByUserID(ctx context.Context, userID int64) (Portfolio, error) {
+	row := q.queryRow(ctx, q.getPortfolioByUserIDStmt, getPortfolioByUserID, userID)
+	var i Portfolio
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Asset,
+		&i.Quantity,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getPortfolioByUserIdAndAsset = `-- name: GetPortfolioByUserIdAndAsset :one
@@ -123,7 +107,7 @@ func (q *Queries) UpdatePortfolioBalance(ctx context.Context, arg UpdatePortfoli
 
 const updatePortfolioCreditQuantity = `-- name: UpdatePortfolioCreditQuantity :one
 UPDATE portfolio
-SET quantity = quantity+$1,
+SET quantity = $1,
     updated_at = CURRENT_TIMESTAMP
 WHERE user_id = $2
   AND asset = $3
@@ -151,7 +135,7 @@ func (q *Queries) UpdatePortfolioCreditQuantity(ctx context.Context, arg UpdateP
 
 const updatePortfolioDebitQuantity = `-- name: UpdatePortfolioDebitQuantity :one
 UPDATE portfolio
-SET quantity = quantity-$1,
+SET quantity = $1,
     updated_at = CURRENT_TIMESTAMP
 WHERE user_id = $2
   AND asset = $3

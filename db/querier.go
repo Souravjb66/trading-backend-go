@@ -20,7 +20,7 @@ type Querier interface {
 	GetOpenOrdersByAsset(ctx context.Context, asset string) ([]Orders, error)
 	GetOpenSellOrders(ctx context.Context) ([]Orders, error)
 	GetOrdersByOrderId(ctx context.Context, id int64) (Orders, error)
-	GetPortfolioByUserID(ctx context.Context, userID int64) ([]Portfolio, error)
+	GetPortfolioByUserID(ctx context.Context, userID int64) (Portfolio, error)
 	GetPortfolioByUserIdAndAsset(ctx context.Context, arg GetPortfolioByUserIdAndAssetParams) (Portfolio, error)
 	GetTradesByUserID(ctx context.Context, userID int64) ([]Trades, error)
 	GetUserByEmail(ctx context.Context, email string) (Users, error)

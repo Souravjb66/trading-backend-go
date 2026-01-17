@@ -49,7 +49,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (Users, 
 
 const debitUserBalance = `-- name: DebitUserBalance :one
 UPDATE users
-SET balance = balance - $1
+SET balance = $1
 WHERE id = $2
   AND balance >= $1
 RETURNING id, username, email, password_hash, balance, created_at, deleted_at
@@ -178,7 +178,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (Users
 
 const updateUserBalanceDelta = `-- name: UpdateUserBalanceDelta :one
 UPDATE users
-SET balance = balance + $1
+SET balance = $1
 WHERE id = $2
 RETURNING id, username, email, password_hash, balance, created_at, deleted_at
 `
