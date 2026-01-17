@@ -194,7 +194,7 @@ func CreateUserPortfolio(userId uint64,asset string,balance int64)error{
 	data,err:=dB.InsertPortfolio(context.Background(),params)
 	if err!=nil{
 		log.Println("erro in portfolio ",err)
-		// return err
+		return err
 	}
 	for _,con:=range ws.WebsocketConnections{
 		res:=map[string]interface{}{
@@ -209,7 +209,7 @@ func CreateUserPortfolio(userId uint64,asset string,balance int64)error{
 		btData,err:=json.Marshal(res)
 		if err!=nil{
 			log.Println("error in creating portfolio :",err)
-			// return err
+			return err
 
 		}
 
@@ -261,7 +261,7 @@ func CreateOrder(userId uint64,asset string,orderType string,price int64,quantit
 		btData,err:=json.Marshal(res)
 		if err!=nil{
 			log.Println("error in creating order ",err)
-			// return err
+			return err
 
 		}
 		

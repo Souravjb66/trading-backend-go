@@ -3,8 +3,8 @@ CREATE TABLE trades (
     buy_order_id BIGINT NOT NULL,
     sell_order_id BIGINT NOT NULL,
     asset VARCHAR(20) NOT NULL,
-    price NUMERIC(20,8) NOT NULL,
-    quantity NUMERIC(20,8) NOT NULL,
+    price BIGINT NOT NULL,
+    quantity BIGINT NOT NULL,
     executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_trades_buy_order
         FOREIGN KEY (buy_order_id)

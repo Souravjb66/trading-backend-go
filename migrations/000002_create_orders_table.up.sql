@@ -9,9 +9,9 @@ CREATE TABLE orders (
     user_id BIGINT NOT NULL,
     asset VARCHAR(20) NOT NULL,
     type order_type NOT NULL,
-    price NUMERIC(20,8) NOT NULL,
-    quantity NUMERIC(20,8) NOT NULL,
-    remaining_quantity NUMERIC(20,8) NOT NULL,
+    price BIGINT NOT NULL,
+    quantity BIGINT NOT NULL,
+    remaining_quantity BIGINT NOT NULL,
     status order_status NOT NULL DEFAULT 'OPEN',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_orders_user

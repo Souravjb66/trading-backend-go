@@ -1,15 +1,18 @@
 package ws
 
 import (
-	
+	"encoding/json"
 	"log"
 	// "net/http"
 
 	// "github.com/gorilla/mux"
 	"net/http"
-	"github.com/gorilla/websocket"
 	"sync"
+
 	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/websocket"
+	// "trading/services"
+
 	// "trading/config"
 
 	// "github.com/gofiber/contrib/websocket"
@@ -52,7 +55,7 @@ func HandleConnection(w http.ResponseWriter, r *http.Request) {
 	// 	conn.WriteJSON(msg)
 	// }
 
-	go ReadClientMessage(conn, userId)
+	go ReadClientMessage(conn, userId,r)
 	go WriteClientMessage(conn, userId)
 }
 func RegisterClient(client *Client,id int) {
@@ -96,12 +99,14 @@ func UnregisterClient(client *Client,id int) {
 	
 }
 
-func ReadClientMessage(c *websocket.Conn,userId int){
+func ReadClientMessage(c *websocket.Conn,userId int,r *http.Request){
 	// app:=config.TradeServer.WebSocketRoute
+	log.Println("userid",userId)
 	var(
-			dataType int
+			// dataType int
 			msg []byte
 			err error
+			msgFormat MsgFormat
 			
 
 		)
@@ -115,14 +120,45 @@ func ReadClientMessage(c *websocket.Conn,userId int){
 	for{
 
 		log.Println("in read msg")
-		if dataType,msg,err=c.ReadMessage();err!=nil{
+		if _,msg,err=c.ReadMessage();err!=nil{
 			log.Println("error in read ",err)
 			cl:=WebsocketConnections[userId]
             UnregisterClient(cl,userId)
 			break
 		}
-		log.Println(dataType)
-		log.Println(string(msg))
+	    err=json.Unmarshal(msg, &msgFormat)
+		if err!=nil{
+			log.Println("errror in unmarsal msg")
+			return
+		}
+		// log.Println(dataType)
+		// log.Println(string(msg))
+		log.Println(msgFormat.Data["uu"])
+		switch msgFormat.Type{
+		case ALL_CLOSE_TRADE:
+
+		case ALL_OPEN_TRADE:
+		case USER_PROFILE:
+		case OPEN_ORDERS:
+			// a:=msgFormat.Data["asset"].(string)
+	
+			// if err!=nil{
+			// 	log.Println("error in geting data")
+
+			// }else{
+			// 	cl:=WebsocketConnections[userId]
+			// 	dt,err:=json.Marshal(res)
+			// 	if err!=nil{
+			// 	    log.Println("error in geting data")
+
+			//     }
+			// 	go func(){
+			// 		cl.Send<-dt
+			// 	}()
+			// }
+
+		
+		}
 
 	}
 		

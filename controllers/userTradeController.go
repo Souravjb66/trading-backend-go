@@ -117,6 +117,14 @@ func GetTradesController(w http.ResponseWriter,r *http.Request){
 }
 func GetOrdersController(w http.ResponseWriter,r *http.Request){
 	w.Header().Set("Content-Type", "application/json")
+	asset:=chi.URLParam(r, "asset")
+	res,err:=services.ShowLiveOrder(asset)
+	if err!=nil{
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("error in geting data"))
+	}
+	json.NewEncoder(w).Encode(res)
+	
 	
 
 }

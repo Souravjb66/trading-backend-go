@@ -55,8 +55,14 @@ const(
 	ALL_CLOSE_TRADE = "CLOSE_TRADES"
 	ALL_OPEN_TRADE = "OPEN_TRADES"
 	USER_PROFILE="PROFILE"
+	OPEN_ORDERS="OPEN_ORDERS"
+	
 
 )
+type MsgFormat struct{
+	Type string `json:"type"`
+	Data map[string]interface{} `json:"data"`
+}
 
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
     w.Header().Set("Content-Type", "application/json")
